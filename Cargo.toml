@@ -9,3 +9,6 @@ license = "GPL-3.0-or-later"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+gpio = "0.4.1"              # Handles basic GPIO operations
+strum_macros = "0.23"       # Helpful macros for working with enums and strings
+strum = "0.23"              # Helpful macros for working with enums and strings
