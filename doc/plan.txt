@@ -1,0 +1,14 @@
+This document is intended for the library author to keep track of their thoughts and ideas concerning the development of the library. It is informal in nature and not intended for publication.
+
+On the GPIO management:
+- GPIO usages must be registered through a pin manager singleton, which may fobid the usage (i.e. in case of a conflict)
+- Pins are clustered to ports. They cannot be accessed individually, just through ports
+- The most basic way to read from or write to pins is through input or ouput ports. Those structs should not have many bels and whistles, they should just be use used for reading from and writing to pins
+- A PortFrame is a representation of the state of a port
+- In order to ease up writing to and reading from a port you can use PortFrameReaders and PortFrameWriters. Those are traits that...
+    - PortFrameReaders:
+        - can trigger a listener if the PortFrame changes
+        - can software debounce inputs
+        - can trigger autorepeat
+    - PortFrameWriters can... well, output a port frame
+- Both PFR and PFW have a plain version which read from/write to an In/Output port directly. Additionally they can fave a Matrix version which utilizes both an Input- and an Ouput port
