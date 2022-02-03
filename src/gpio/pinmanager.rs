@@ -53,8 +53,17 @@ impl <'l> PinManager {
         Ok(new_port)
     }
 
-    pub fn register_InputPort(&mut self, pins: Vec<GpioPins>) -> Result<InputPort, Vec<GpioPins>> {
-        !unimplemented!()
+    pub fn register_InputPort(&mut self, pins: Vec<GpioPins>) -> Result<Arc<InputPort>, Vec<GpioPins>> {
+        
+        self.check_free_pins(&pins)?;
+        
+
+        let new_port = Arc::new(InputPort::new(pins));
+        {
+            self.input_ports.push(new_port.clone());
+        }
+
+        Ok(new_port)
     }
 }
 
@@ -139,5 +148,31 @@ mod test {
         assert!(error_pins.len() == 2);
         assert!(error_pins.contains(&GPIO_01));
         assert!(error_pins.contains(&GPIO_11));
+    }
+
+
+    #[test]
+    fn register_InputPort_Ok() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result = pinmanager.register_InputPort(vec![GPIO_12, GPIO_10, GPIO_08, GPIO_06]);
+        assert!(result.is_ok());
+        let new_port = result.unwrap();
+        assert!(new_port.get_PortFrame().len() == 4);
+    }
+
+    #[test]
+    fn register_InputPort_fail() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result_ok = pinmanager.register_OutputPort(vec![GPIO_12, GPIO_10, GPIO_08, GPIO_06]);
+        assert!(result_ok.is_ok());
+        let result_err = pinmanager.register_InputPort(vec![GPIO_01, GPIO_02, GPIO_06, GPIO_11, GPIO_13]);
+        assert!(result_err.is_err());
+
+        
+        let error_pins = result_err.unwrap_err();
+        assert!(error_pins.len() == 1);
+        assert!(error_pins.contains(&GPIO_06));
     }
 }
