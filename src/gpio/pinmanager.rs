@@ -1,4 +1,4 @@
-use std::{collections::{ HashMap }, rc::Rc, sync::Arc};
+use std::{collections::{ HashMap }, rc::Rc, sync::{Arc, Mutex}};
 
 use super::gpiopins::GpioPins;
 
@@ -11,7 +11,7 @@ pub struct PinManager {
 }
 
 lazy_static! {
-    static ref PINMANAGER: PinManager = PinManager::new(); 
+    static ref PINMANAGER: Mutex<PinManager> = Mutex::new(PinManager::new()); 
 }
 
 impl <'l> PinManager {
@@ -21,6 +21,12 @@ impl <'l> PinManager {
             output_ports: vec![],
         }
     }
+
+    fn clear(&mut self) {
+        self.output_ports.clear();
+        self.input_ports.clear();
+    }
+
 
     pub fn check_free_pins(&self, pins_to_check: &Vec<GpioPins>) -> Result<(), Vec<GpioPins>> {
         
@@ -47,7 +53,7 @@ impl <'l> PinManager {
         Ok(new_port)
     }
 
-    pub fn register_InputPort(&self, pins: Vec<GpioPins>) -> Result<InputPort, Vec<GpioPins>> {
+    pub fn register_InputPort(&mut self, pins: Vec<GpioPins>) -> Result<InputPort, Vec<GpioPins>> {
         !unimplemented!()
     }
 }
@@ -56,6 +62,7 @@ pub trait Port {
     fn get_PortFrame(&self) -> &PortFrame;
 }
 
+#[derive(Debug)]
 pub struct OutputPort {
     state: PortFrame,
 }
@@ -76,6 +83,7 @@ impl Port for OutputPort {
     }
 }
 
+#[derive(Debug)]
 pub struct InputPort {
     state: PortFrame,
 }
@@ -98,12 +106,38 @@ impl Port for InputPort {
 
 #[cfg(test)]
 mod test {
-    use crate::gpio::gpiopins::GpioPins::*;
+    use crate::gpio::{gpiopins::GpioPins::*, pinmanager::Port};
 
     #[test]
     fn check_free_pins_pins_free() {
 
-        let check_result = super::PINMANAGER.check_free_pins(&vec![GPIO_01, GPIO_05, GPIO_11]);
+        let check_result = super::PINMANAGER.lock().unwrap().check_free_pins(&vec![GPIO_01, GPIO_05, GPIO_11]);
         assert!(check_result.is_ok())
+    }
+
+    #[test]
+    fn register_OutputPort_Ok() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result = pinmanager.register_OutputPort(vec![GPIO_01, GPIO_05, GPIO_11]);
+        assert!(result.is_ok());
+        let new_port = result.unwrap();
+        assert!(new_port.get_PortFrame().len() == 3);
+    }
+
+    #[test]
+    fn register_OutputPort_fail() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result_ok = pinmanager.register_OutputPort(vec![GPIO_01, GPIO_05, GPIO_11]);
+        assert!(result_ok.is_ok());
+        let result_err = pinmanager.register_OutputPort(vec![GPIO_01, GPIO_02, GPIO_06, GPIO_11, GPIO_13]);
+        assert!(result_err.is_err());
+
+        
+        let error_pins = result_err.unwrap_err();
+        assert!(error_pins.len() == 2);
+        assert!(error_pins.contains(&GPIO_01));
+        assert!(error_pins.contains(&GPIO_11));
     }
 }
