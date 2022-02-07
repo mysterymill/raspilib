@@ -194,7 +194,19 @@ mod test {
     }
 
     #[test]
-    fn register_OutputPort_fail() {
+    fn register_OutputPort_misdefined_fail() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result_err = pinmanager.register_OutputPort(&[GPIO_01, GPIO_02, GPIO_06, GPIO_01, GPIO_13]);
+        assert!(result_err.is_err());
+
+        let error_pins = result_err.unwrap_err();
+        assert!(error_pins.1.len() == 1);
+        assert!(error_pins.1.contains(&GPIO_01));
+    }
+
+    #[test]
+    fn register_OutputPort_conflict_fail() {
         let mut pinmanager = super::PINMANAGER.lock().unwrap();
         pinmanager.clear();
         let result_ok = pinmanager.register_OutputPort(&[GPIO_01, GPIO_05, GPIO_11]);
@@ -221,7 +233,19 @@ mod test {
     }
 
     #[test]
-    fn register_InputPort_fail() {
+    fn register_InputPort_misdefined_fail() {
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+        let result_err = pinmanager.register_InputPort(&[GPIO_04, GPIO_04, GPIO_04, GPIO_04]);
+        assert!(result_err.is_err());
+
+        let error_pins = result_err.unwrap_err();
+        assert!(error_pins.1.len() == 3);
+        assert!(error_pins.1.contains(&GPIO_04));
+    }
+
+    #[test]
+    fn register_InputPort_conflict_fail() {
         let mut pinmanager = super::PINMANAGER.lock().unwrap();
         pinmanager.clear();
         let result_ok = pinmanager.register_OutputPort(&[GPIO_12, GPIO_10, GPIO_08, GPIO_06]);
