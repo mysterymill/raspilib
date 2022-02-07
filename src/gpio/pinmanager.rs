@@ -1,13 +1,16 @@
-use std::{collections::{ HashMap }, rc::Rc, sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}};
 
 use super::gpiopins::GpioPins;
 
-type PortFrame = HashMap<GpioPins, gpio::GpioValue>;
-type ChangeCallback = fn(before: PortFrame, now: PortFrame);
+type PortDefinition<const I: usize> = [GpioPins; I]; // ToDo: Add where as soon as it is possible
+type PortFrame<const I: usize> = [gpio::GpioValue; I];
+type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFrame<I>);
+type MismatchingPinsError = Vec<GpioPins>;
 
 pub struct PinManager {
-    output_ports: Vec<Arc<OutputPort>>,
-    input_ports: Vec<Arc<InputPort>>,
+    // ToDo: This is the Part I don't know how to solve yet
+    output_ports: Vec<Arc<OutputPort<_>>>,
+    input_ports: Vec<Arc<InputPort<_>>,
 }
 
 lazy_static! {
@@ -28,7 +31,7 @@ impl <'l> PinManager {
     }
 
 
-    pub fn check_free_pins(&self, pins_to_check: &Vec<GpioPins>) -> Result<(), Vec<GpioPins>> {
+    pub fn check_free_pins(&self, pins_to_check: &Vec<GpioPins>) -> Result<(), MismatchingPinsError> {
         
         let input_pins = self.input_ports.iter().map(|port| port.get_PortFrame().keys()).flatten();
         let output_pins = self.output_ports.iter().map(|port| port.get_PortFrame().keys()).flatten();
@@ -40,7 +43,7 @@ impl <'l> PinManager {
         if conflict_pins.is_empty() { Ok(()) } else { Err(conflict_pins) }
     }
 
-    pub fn register_OutputPort(&mut self, pins: Vec<GpioPins>) -> Result<Arc<OutputPort>, Vec<GpioPins>> {
+    pub fn register_OutputPort<const I: usize>(&mut self, pins: PortDefinition<I>) -> Result<Arc<OutputPort<I>>, Vec<GpioPins>> {
         
         self.check_free_pins(&pins)?;
         
@@ -53,7 +56,7 @@ impl <'l> PinManager {
         Ok(new_port)
     }
 
-    pub fn register_InputPort(&mut self, pins: Vec<GpioPins>) -> Result<Arc<InputPort>, Vec<GpioPins>> {
+    pub fn register_InputPort<const I: usize>(&mut self, pins: PortDefinition<I>) -> Result<Arc<InputPort<I>>, MismatchingPinsError> {
         
         self.check_free_pins(&pins)?;
         
@@ -67,17 +70,21 @@ impl <'l> PinManager {
     }
 }
 
-pub trait Port {
-    fn get_PortFrame(&self) -> &PortFrame;
+pub trait Port<const I: usize> {
+    fn get_PortFrame(&self) -> &PortFrame<I>;
+}
+
+pub trait WritablePort<const I: usize>: Port<I> {
+    fn set_PortFrame(&mut self, new_state: PortFrame<I>) -> Result<(), MismatchingPinsError>;
 }
 
 #[derive(Debug)]
-pub struct OutputPort {
-    state: PortFrame,
+pub struct OutputPort<const I: usize> {
+    state: PortFrame<I>,
 }
 
-impl OutputPort {
-    fn new(pins: Vec<GpioPins>) -> OutputPort {
+impl <const I: usize> OutputPort<I> {
+    fn new(pins: Vec<GpioPins>) -> OutputPort<I> {
         let mut state = PortFrame::new();
         pins.into_iter().for_each(|pin| {
             state.insert(pin, gpio::GpioValue::Low);
@@ -86,19 +93,25 @@ impl OutputPort {
     }
 }
 
-impl Port for OutputPort {
-    fn get_PortFrame(&self) -> &PortFrame {
+impl <const I: usize> Port<I> for OutputPort<I> {
+    fn get_PortFrame(&self) -> &PortFrame<I> {
         &self.state
     }
 }
 
-#[derive(Debug)]
-pub struct InputPort {
-    state: PortFrame,
+impl <const I: usize> WritablePort<I> for OutputPort<I> {
+    fn set_PortFrame(&mut self, new_state: PortFrame<I>) {
+        self.state = new_state;
+    }
 }
 
-impl InputPort {
-    fn new(pins: Vec<GpioPins>) -> InputPort {
+#[derive(Debug)]
+pub struct InputPort<const I: usize> {
+    state: PortFrame<I>,
+}
+
+impl <const I: usize> InputPort<I> {
+    fn new(pins: Vec<GpioPins>) -> InputPort<I> {
         let mut state = PortFrame::new();
         pins.into_iter().for_each(|pin| {
             state.insert(pin, gpio::GpioValue::Low);
@@ -107,8 +120,8 @@ impl InputPort {
     }
 }
 
-impl Port for InputPort {
-    fn get_PortFrame(&self) -> &PortFrame {
+impl <const I: usize> Port<I> for InputPort<I> {
+    fn get_PortFrame(&self) -> &PortFrame<I> {
         &self.state
     }
 }
