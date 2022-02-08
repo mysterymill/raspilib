@@ -1,24 +1,41 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashSet};
 
-use super::pinmanager::{InputPort, OutputPort, PortFrame, PortDefinition, MismatchingPinsError, PinManager, self, PINMANAGER, Port};
+use gpio::GpioValue;
+
+use super::{pinmanager::{InputPort, OutputPort, PortFrame, PortDefinition, MismatchingPinsError, PinManager, self, PINMANAGER, Port, WritablePort, PinOccupant}, gpiopins::GpioPins};
 
 #[derive(Debug)]
-pub struct MatrixOutput<const I: usize, const O: usize> {
+pub struct MatrixOutput<const I: usize, const O: usize> where [(); {I * O}]: {
     input_port: Arc<InputPort<I>>,
     output_port: Arc<OutputPort<O>>,
 
-    state: [PortFrame<O>; I],
+    state: PortFrame<{I * O}>,
 }
 
-impl <const I: usize, const O: usize> MatrixOutput<I, O> {
+impl <const I: usize, const O: usize> MatrixOutput<I, O> where [(); {I * O}]: {
     pub fn new(input_pins: &PortDefinition<I>, output_pins: &PortDefinition<O>) -> Result<MatrixOutput<I, O>, MismatchingPinsError> {
         let mut pin_manager = PINMANAGER.lock().unwrap();
 
         let input_port = pin_manager.register_InputPort(input_pins)?;
         let output_port = pin_manager.register_OutputPort(output_pins)?;
-        let state = [output_port.get_PortFrame().clone(); I];
+        let state = [GpioValue::Low; I * O];
 
         Ok(MatrixOutput{input_port, output_port, state})
+    }
+}
+
+
+
+impl <const I: usize, const O: usize> PinOccupant for MatrixOutput<I, O> where [(); {I * O}]: {
+    fn get_occupied_pins(&self) -> HashSet<&GpioPins> {
+        unimplemented!()
+    }
+}
+
+
+impl <const I: usize, const O: usize> Port<{I * O}> for MatrixOutput<I, O> {
+    fn get_PortFrame(&self) -> &PortFrame<{I * O}> {
+        unimplemented!()
     }
 }
 
