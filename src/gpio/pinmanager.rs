@@ -4,17 +4,17 @@ use gpio::GpioValue;
 
 use super::gpiopins::GpioPins;
 
-type PortDefinition<const I: usize> = [GpioPins; I]; // ToDo: Add where as soon as it is possible
-type PortFrame<const I: usize> = [gpio::GpioValue; I];
-type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFrame<I>);
-type MismatchingPinsError = (String, Vec<GpioPins>);
+pub type PortDefinition<const I: usize> = [GpioPins; I]; // ToDo: Add where as soon as it is possible
+pub type PortFrame<const I: usize> = [gpio::GpioValue; I];
+pub type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFrame<I>);
+pub type MismatchingPinsError = (String, Vec<GpioPins>);
 
 pub struct PinManager {
     pin_occupants: Vec<Arc<dyn PinOccupant + Send>>
 }
 
 lazy_static! {
-    static ref PINMANAGER: Mutex<PinManager> = Mutex::new(PinManager::new()); 
+    pub static ref PINMANAGER: Mutex<PinManager> = Mutex::new(PinManager::new()); 
 }
 
 impl <'l> PinManager {
@@ -24,7 +24,7 @@ impl <'l> PinManager {
         }
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.pin_occupants.clear();
     }
 
