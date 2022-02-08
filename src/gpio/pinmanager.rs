@@ -179,7 +179,10 @@ mod test {
     #[test]
     fn check_free_pins_pins_free() {
 
-        let check_result = super::PINMANAGER.lock().unwrap().check_free_pins(&vec![&GPIO_01, &GPIO_05, &GPIO_11]);
+        let mut pinmanager = super::PINMANAGER.lock().unwrap();
+        pinmanager.clear();
+
+        let check_result = pinmanager.check_free_pins(&vec![&GPIO_01, &GPIO_05, &GPIO_11]);
         assert!(check_result.is_ok())
     }
 
