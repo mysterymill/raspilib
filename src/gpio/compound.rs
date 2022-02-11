@@ -4,6 +4,7 @@ use gpio::GpioValue;
 
 use super::{pinmanager::{InputPort, OutputPort, PortFrame, PortDefinition, MismatchingPinsError, PinManager, self, PINMANAGER, Port, WritablePort, PinOccupant}, gpiopins::GpioPins};
 
+
 #[derive(Debug)]
 pub struct MatrixOutput<const I: usize, const O: usize> where [(); I * O]: {
     input_port: (Arc<InputPort<I>>, bool),

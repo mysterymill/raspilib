@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}, collections::HashSet, iter::FromIterator};
+use std::{sync::{Arc, Mutex}, collections::HashSet, iter::FromIterator, thread::{Thread, self}};
 
 use gpio::GpioValue;
 
@@ -10,7 +10,8 @@ pub type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFram
 pub type MismatchingPinsError = (String, Vec<GpioPins>);
 
 pub struct PinManager {
-    pin_occupants: Vec<Arc<dyn PinOccupant + Send>>
+    pin_occupants: Vec<Arc<dyn PinOccupant + Send>>,
+    active_ports: Arc<Mutex<Vec<Arc<dyn ActivePort>>>>,
 }
 
 lazy_static! {
@@ -19,15 +20,33 @@ lazy_static! {
 
 impl <'l> PinManager {
     fn new() -> PinManager {
-        PinManager {
+        let pin_manager = PinManager {
             pin_occupants: vec![],
-        }
+            active_ports: Arc::new(Mutex::new(vec![])),
+        };
+
+        let active_ports = pin_manager.active_ports.clone();
+        thread::spawn(|| {
+            PinManager::activate_active_ports(active_ports);
+        });
+
+        pin_manager
     }
 
     pub fn clear(&mut self) {
         self.pin_occupants.clear();
     }
 
+    pub fn activate_active_ports(ports_to_activate: Arc<Mutex<Vec<Arc<dyn ActivePort>>>>) {
+        while true {
+            let active_port_lock = ports_to_activate.lock().unwrap();
+
+            active_port_lock.iter().for_each(|ap| ap.activate());
+            
+            std::mem::drop(active_port_lock);
+            thread::yield_now();
+        }
+    }
 
     pub fn check_free_pins(&self, pins_to_check: &Vec<&GpioPins>) -> Result<(), MismatchingPinsError> {
         
@@ -63,7 +82,9 @@ impl <'l> PinManager {
 
         Ok(new_port)
     }
+
 }
+    
 
 pub trait PinOccupant: Sync {
     fn get_occupied_pins(&self) -> HashSet<&GpioPins>;
@@ -72,6 +93,14 @@ pub trait PinOccupant: Sync {
 
 pub trait Port<const I: usize>: Sized + PinOccupant {
     fn get_PortFrame(&self) -> &PortFrame<I>;
+}
+
+pub trait ActivePort: Sync + Send + 'static {
+    fn start(&self);
+    fn stop(&self);
+    fn pause(&self, paused: bool);
+    fn is_paused(&self) -> bool;
+    fn activate(&self);
 }
 
 pub trait WritablePort<const I: usize>: Port<I> {
