@@ -41,8 +41,10 @@ impl <'l> PinManager {
         while true {
             let active_port_lock = ports_to_activate.lock().unwrap();
 
-            active_port_lock.iter().for_each(|ap| ap.activate());
-            
+            active_port_lock.iter()
+                .filter(|ap| !ap.is_paused())
+                .for_each(|ap| ap.activate());
+
             std::mem::drop(active_port_lock);
             thread::yield_now();
         }
