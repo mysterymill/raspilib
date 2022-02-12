@@ -2,7 +2,7 @@ use std::{sync::Arc, collections::HashSet};
 
 use gpio::GpioValue;
 
-use super::{pinmanager::{InputPort, OutputPort, PortFrame, PortDefinition, MismatchingPinsError, PinManager, self, PINMANAGER, Port, WritablePort, PinOccupant}, gpiopins::GpioPins};
+use super::{pinmanager::{InputPort, OutputPort, PortFrame, PortDefinition, MismatchingPinsError, PinManager, self, PINMANAGER, Port, WritablePort, PinOccupant, ActivePort}, gpiopins::GpioPins};
 
 
 #[derive(Debug)]
@@ -11,6 +11,8 @@ pub struct MatrixOutput<const I: usize, const O: usize> where [(); I * O]: {
     output_port: (Arc<OutputPort<O>>, bool),
 
     state: PortFrame<{I * O}>,
+
+    paused: bool,
 }
 
 impl <const I: usize, const O: usize> MatrixOutput<I, O> where [(); I * O]: {
@@ -21,7 +23,31 @@ impl <const I: usize, const O: usize> MatrixOutput<I, O> where [(); I * O]: {
         let output_port = (pin_manager.register_OutputPort(output_pins)?, output_is_demultiplexed);
         let state = [GpioValue::Low; I * O];
 
-        Ok(MatrixOutput{input_port, output_port, state})
+        Ok(MatrixOutput{input_port, output_port, state, paused: true})
+    }
+}
+
+impl <const I: usize, const O: usize> ActivePort for MatrixOutput<I, O> where [(); I * O]: {
+    fn start(self) -> Arc<Self> {
+        let self_arc = Arc::new(self);
+        PINMANAGER.lock().unwrap().add_active_port(self_arc);
+        self_arc.clone()
+    }
+
+    fn stop(&self) {
+
+    }
+
+    fn pause(&mut self, paused: bool) {
+        self.paused = paused;
+    }
+
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    fn activate(&self) {
+
     }
 }
 

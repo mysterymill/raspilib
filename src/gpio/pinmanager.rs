@@ -34,6 +34,7 @@ impl <'l> PinManager {
     }
 
     pub fn clear(&mut self) {
+        self.active_ports.lock().unwrap().clear();
         self.pin_occupants.clear();
     }
 
@@ -85,6 +86,9 @@ impl <'l> PinManager {
         Ok(new_port)
     }
 
+    pub fn add_active_port(&mut self, new_active_port: Arc<dyn ActivePort>) {
+        self.active_ports.lock().unwrap().push(new_active_port);
+    }
 }
     
 
@@ -98,9 +102,9 @@ pub trait Port<const I: usize>: Sized + PinOccupant {
 }
 
 pub trait ActivePort: Sync + Send + 'static {
-    fn start(&self);
+    fn start(self) -> Arc<Self>;
     fn stop(&self);
-    fn pause(&self, paused: bool);
+    fn pause(&mut self, paused: bool);
     fn is_paused(&self) -> bool;
     fn activate(&self);
 }
