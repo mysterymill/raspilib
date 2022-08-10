@@ -10,6 +10,6 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 gpio = "0.4.1"              # Handles basic GPIO operations
-strum_macros = "0.23"       # Helpful macros for working with enums and strings
-strum = "0.23"              # Helpful macros for working with enums and strings
+strum_macros = "0.24.0"       # Helpful macros for working with enums and strings
+strum = "0.24.0"              # Helpful macros for working with enums and strings
 lazy_static = "1.4.0"       # Allows lazy instantiation of global state

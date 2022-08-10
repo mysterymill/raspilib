@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}, collections::HashSet, iter::FromIterator, thread::{Thread, self}};
+use std::{sync::{Arc, Mutex}, collections::HashSet, iter::FromIterator, thread};
 
 use gpio::GpioValue;
 
@@ -90,7 +90,7 @@ impl <'l> PinManager {
         self.active_ports.lock().unwrap().push(new_active_port);
     }
 }
-    
+
 
 pub trait PinOccupant: Sync {
     fn get_occupied_pins(&self) -> HashSet<&GpioPins>;
@@ -102,7 +102,7 @@ pub trait Port<const I: usize>: Sized + PinOccupant {
 }
 
 pub trait ActivePort: Sync + Send + 'static {
-    fn start(self) -> Arc<Self>;
+    fn start(self);
     fn stop(&self);
     fn pause(&mut self, paused: bool);
     fn is_paused(&self) -> bool;
@@ -208,6 +208,7 @@ impl <const I: usize>  PinOccupant for InputPort<I> {
 }
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod test {
     use crate::gpio::{gpiopins::GpioPins::*, pinmanager::Port};
 

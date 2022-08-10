@@ -28,10 +28,9 @@ impl <const I: usize, const O: usize> MatrixOutput<I, O> where [(); I * O]: {
 }
 
 impl <const I: usize, const O: usize> ActivePort for MatrixOutput<I, O> where [(); I * O]: {
-    fn start(self) -> Arc<Self> {
+    fn start(self) {
         let self_arc = Arc::new(self);
         PINMANAGER.lock().unwrap().add_active_port(self_arc);
-        self_arc.clone()
     }
 
     fn stop(&self) {
@@ -67,6 +66,7 @@ impl <const I: usize, const O: usize> Port<{I * O}> for MatrixOutput<I, O> {
 }
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod test {
     use crate::gpio::{pinmanager::{PINMANAGER, PinOccupant}, gpiopins::GpioPins::*};
 
