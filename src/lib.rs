@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
 
-mod gpio;
+pub mod gpio;
 #[macro_use]
 extern crate lazy_static;
