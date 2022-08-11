@@ -9,6 +9,16 @@ pub enum GpioPins {
     GPIO_21, GPIO_22, GPIO_23, GPIO_24, GPIO_25, GPIO_26
 }
 
+impl GpioPins {
+    pub const fn all() -> [GpioPins; (GpioPins::GPIO_26 as usize) + 1] {
+        [
+            GpioPins::GPIO_01, GpioPins::GPIO_02, GpioPins::GPIO_03, GpioPins::GPIO_04, GpioPins::GPIO_05, GpioPins::GPIO_06, GpioPins::GPIO_07,
+            GpioPins::GPIO_08, GpioPins::GPIO_09, GpioPins::GPIO_10, GpioPins::GPIO_11, GpioPins::GPIO_12, GpioPins::GPIO_13, GpioPins::GPIO_14,
+            GpioPins::GPIO_15, GpioPins::GPIO_16, GpioPins::GPIO_17, GpioPins::GPIO_18, GpioPins::GPIO_19, GpioPins::GPIO_20, GpioPins::GPIO_21,
+            GpioPins::GPIO_22, GpioPins::GPIO_23, GpioPins::GPIO_24, GpioPins::GPIO_25, GpioPins::GPIO_26]
+    }
+}
+
 impl TryFrom<u8> for GpioPins {
     type Error = &'static str;
 

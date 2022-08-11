@@ -6,8 +6,10 @@ use super::gpiopins::GpioPins;
 
 pub type PortDefinition<const I: usize> = [GpioPins; I]; // ToDo: Add where as soon as it is possible
 pub type PortFrame<const I: usize> = [gpio::GpioValue; I];
+pub type AllPinsOutputPort = OutputPort<26>;
 pub type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFrame<I>);
 pub type MismatchingPinsError = (String, Vec<GpioPins>);
+pub type PinNotInPortError = String;
 
 pub struct PinManager {
     pin_occupants: Vec<Arc<dyn PinOccupant + Send>>,
@@ -111,6 +113,7 @@ pub trait ActivePort: Sync + Send + 'static {
 
 pub trait WritablePort<const I: usize>: Port<I> {
     fn set_PortFrame(&mut self, new_state: PortFrame<I>);
+    fn set_pin_state(&mut self, pin: usize, state: GpioValue) -> Result<GpioValue, PinNotInPortError>;
 }
 
 #[derive(Debug)]
@@ -162,6 +165,17 @@ impl <const I: usize> WritablePort<I> for OutputPort<I> {
     fn set_PortFrame(&mut self, new_state: PortFrame<I>) {
         self.state = new_state;
     }
+
+    fn set_pin_state(&mut self, pin: usize, value: GpioValue) -> Result<GpioValue, PinNotInPortError> {
+        if pin < 0 || pin >= I {
+            Err("Pin is not part of port".to_owned())
+        } else {
+            let old_state = self.state[pin].clone();
+            self.state[pin] = value;
+            Ok(old_state)
+        }
+    }
+
 }
 
 #[derive(Debug)]
