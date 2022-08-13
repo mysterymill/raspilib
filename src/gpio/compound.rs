@@ -16,7 +16,7 @@ pub struct MatrixOutput<const I: usize, const O: usize> where [(); I * O]: {
 }
 
 impl <const I: usize, const O: usize> MatrixOutput<I, O> where [(); I * O]: {
-    pub fn new(input_pins: &PortDefinition<I>, output_pins: &PortDefinition<O>, input_is_demultiplexed: bool, output_is_demultiplexed: bool) -> Result<MatrixOutput<I, O>, MismatchingPinsError> {
+    pub fn new(input_pins: &PortDefinition, output_pins: &PortDefinition, input_is_demultiplexed: bool, output_is_demultiplexed: bool) -> Result<MatrixOutput<I, O>, MismatchingPinsError> {
         let mut pin_manager = PINMANAGER.lock().unwrap();
 
         let input_port = (pin_manager.register_InputPort(input_pins)?, input_is_demultiplexed);

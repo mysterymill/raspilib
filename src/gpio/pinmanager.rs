@@ -1,10 +1,11 @@
-use std::{sync::{Arc, Mutex}, collections::HashSet, iter::FromIterator, thread};
+use std::{sync::{Arc, Mutex}, collections::{HashSet, HashMap}, iter::FromIterator, thread};
 
+use enumset::EnumSet;
 use gpio::GpioValue;
 
 use super::gpiopins::GpioPins;
 
-pub type PortDefinition<const I: usize> = [GpioPins; I]; // ToDo: Add where as soon as it is possible
+pub type PortDefinition = HashMap<GpioPins, u8>; // ToDo: Add where as soon as it is possible
 pub type PortFrame<const I: usize> = [gpio::GpioValue; I];
 pub type AllPinsOutputPort = OutputPort<26>;
 pub type ChangeCallback<const I: usize> = fn(before: PortFrame<I>, now: PortFrame<I>);
@@ -12,7 +13,7 @@ pub type MismatchingPinsError = (String, Vec<GpioPins>);
 pub type PinNotInPortError = String;
 
 pub struct PinManager {
-    pin_occupants: Vec<Arc<dyn PinOccupant + Send>>,
+    occupied_pins: Mutex<HashMap<GpioPins, ()>>,
     active_ports: Arc<Mutex<Vec<Arc<dyn ActivePort>>>>,
 }
 
@@ -23,7 +24,7 @@ lazy_static! {
 impl <'l> PinManager {
     fn new() -> PinManager {
         let pin_manager = PinManager {
-            pin_occupants: vec![],
+            occupied_pins: Mutex::new(HashMap::default()),
             active_ports: Arc::new(Mutex::new(vec![])),
         };
 
@@ -37,7 +38,7 @@ impl <'l> PinManager {
 
     pub fn clear(&mut self) {
         self.active_ports.lock().unwrap().clear();
-        self.pin_occupants.clear();
+        self.occupied_pins.lock().unwrap().clear();
     }
 
     pub fn activate_active_ports(ports_to_activate: Arc<Mutex<Vec<Arc<dyn ActivePort>>>>) {
@@ -53,16 +54,16 @@ impl <'l> PinManager {
         }
     }
 
-    pub fn check_free_pins(&self, pins_to_check: &Vec<&GpioPins>) -> Result<(), MismatchingPinsError> {
+    pub fn check_free_pins(&self, pins_to_check: &EnumSet<GpioPins>) -> Result<(), MismatchingPinsError> {
         
-        let taken_pins = self.pin_occupants.iter().map(|occupant| occupant.get_occupied_pins()).flatten();
+        let taken_pins = self.occupied_pins.lock().unwrap().keys();
 
-        let conflict_pins: Vec<GpioPins> = taken_pins.into_iter().filter(|taken_pin| pins_to_check.contains(&taken_pin)).map(|pin| pin.clone()).collect();
+        let conflict_pins: Vec<GpioPins> = taken_pins.into_iter().filter(|taken_pin| pins_to_check.contains(**taken_pin)).map(|pin| *pin).collect();
 
         if conflict_pins.is_empty() { Ok(()) } else { Err(("Some pins have already been assigned".to_owned(), conflict_pins)) }
     }
 
-    pub fn register_OutputPort<const I: usize>(&mut self, pins: &PortDefinition<I>) -> Result<Arc<OutputPort<I>>, MismatchingPinsError> {
+    pub fn register_OutputPort<const I: usize>(&mut self, pins: &PortDefinition) -> Result<Arc<OutputPort<I>>, MismatchingPinsError> {
         
         self.check_free_pins(&pins.into_iter().collect())?;
         
@@ -75,7 +76,7 @@ impl <'l> PinManager {
         Ok(new_port)
     }
 
-    pub fn register_InputPort<const I: usize>(&mut self, pins: &PortDefinition<I>) -> Result<Arc<InputPort<I>>, MismatchingPinsError> {
+    pub fn register_InputPort<const I: usize>(&mut self, pins: &PortDefinition) -> Result<Arc<InputPort<I>>, MismatchingPinsError> {
         
         self.check_free_pins(&pins.into_iter().collect())?;
         
@@ -93,9 +94,14 @@ impl <'l> PinManager {
     }
 }
 
+impl From<EnumSet<GpioPins>> for PortDefinition {
+    fn from(src: EnumSet<GpioPins>) -> Self {
+        
+    }
+}
 
 pub trait PinOccupant: Sync {
-    fn get_occupied_pins(&self) -> HashSet<&GpioPins>;
+    fn get_occupied_pins(&self) -> EnumSet<GpioPins>;
 }
 
 
@@ -118,13 +124,13 @@ pub trait WritablePort<const I: usize>: Port<I> {
 
 #[derive(Debug)]
 pub struct OutputPort<const I: usize> {
-    pins_of_port: PortDefinition<I>,
+    pins_of_port: PortDefinition,
     state: PortFrame<I>,
 }
 
 
 impl <const I: usize> OutputPort<I> {
-    fn new(pins: &PortDefinition<I>) -> Result<OutputPort<I>, MismatchingPinsError> {
+    fn new(pins: &PortDefinition) -> Result<OutputPort<I>, MismatchingPinsError> {
         let mut known = HashSet::new();
         let mut duplicates = vec![];
 
@@ -180,12 +186,12 @@ impl <const I: usize> WritablePort<I> for OutputPort<I> {
 
 #[derive(Debug)]
 pub struct InputPort<const I: usize> {
-    pins_of_port: PortDefinition<I>,
+    pins_of_port: PortDefinition,
     state: PortFrame<I>,
 }
 
 impl <const I: usize> InputPort<I> {
-    fn new(pins: &PortDefinition<I>) -> Result<InputPort<I>, MismatchingPinsError> {
+    fn new(pins: &PortDefinition) -> Result<InputPort<I>, MismatchingPinsError> {
         let mut known = HashSet::new();
         let mut duplicates = vec![];
 
@@ -216,7 +222,7 @@ impl <const I: usize> Port<I> for InputPort<I> {
 }
 
 impl <const I: usize>  PinOccupant for InputPort<I> {
-    fn get_occupied_pins(&self) -> HashSet<&GpioPins> {
+    fn get_occupied_pins(&self) -> EnumSet<GpioPins> {
         HashSet::from_iter(self.pins_of_port.iter())
     }
 }
